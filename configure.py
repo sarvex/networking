@@ -86,11 +86,10 @@ def symlink_force(target, link_name):
   try:
     os.symlink(target, link_name)
   except OSError as e:
-    if e.errno == errno.EEXIST:
-      os.remove(link_name)
-      os.symlink(target, link_name)
-    else:
+    if e.errno != errno.EEXIST:
       raise e
+    os.remove(link_name)
+    os.symlink(target, link_name)
 
 
 def write_to_bazelrc(line):
@@ -99,7 +98,7 @@ def write_to_bazelrc(line):
 
 
 def write_action_env_to_bazelrc(var_name, var):
-  write_to_bazelrc('build --action_env %s="%s"' % (var_name, str(var)))
+  write_to_bazelrc(f'build --action_env {var_name}="{str(var)}"')
 
 
 def run_shell(cmd, allow_non_zero=False):
@@ -155,20 +154,16 @@ def get_var(environ_cp,
       Raise the error to avoid infinitely looping.
   """
   if not question:
-    question = 'Do you wish to build TensorFlow with %s support?' % query_item
+    question = f'Do you wish to build TensorFlow with {query_item} support?'
   if not yes_reply:
-    yes_reply = '%s support will be enabled for TensorFlow.' % query_item
+    yes_reply = f'{query_item} support will be enabled for TensorFlow.'
   if not no_reply:
-    no_reply = 'No %s' % yes_reply
+    no_reply = f'No {yes_reply}'
 
   yes_reply += '\n'
   no_reply += '\n'
 
-  if enabled_by_default:
-    question += ' [Y/n]: '
-  else:
-    question += ' [y/N]: '
-
+  question += ' [Y/n]: ' if enabled_by_default else ' [y/N]: '
   var = environ_cp.get(var_name)
   if var is not None:
     var_content = var.strip().lower()
@@ -189,21 +184,15 @@ def get_var(environ_cp,
   while var is None:
     user_input_origin = get_input(question)
     user_input = user_input_origin.strip().lower()
-    if user_input == 'y':
+    if (user_input != 'y' and user_input != 'n' and not user_input
+        and enabled_by_default or user_input == 'y'):
       print(yes_reply)
       var = True
-    elif user_input == 'n':
+    elif user_input != 'n' and not user_input or user_input == 'n':
       print(no_reply)
       var = False
-    elif not user_input:
-      if enabled_by_default:
-        print(yes_reply)
-        var = True
-      else:
-        print(no_reply)
-        var = False
     else:
-      print('Invalid selection: %s' % user_input_origin)
+      print(f'Invalid selection: {user_input_origin}')
   return var
 
 
@@ -336,10 +325,7 @@ def prompt_loop_or_load_from_env(environ_cp,
       looping.
   """
   default = environ_cp.get(var_name) or var_default
-  full_query = '%s [Default is %s]: ' % (
-      ask_for_var,
-      default,
-  )
+  full_query = f'{ask_for_var} [Default is {default}]: '
 
   for _ in range(n_ask_attempts):
     val = get_from_env_or_user_or_default(environ_cp, var_name, full_query,
@@ -372,11 +358,8 @@ def set_mpi_home(environ_cp):
          os.path.exists(os.path.join(mpi_home, 'lib32'))))
     if not exists:
       print(
-          'Invalid path to the MPI Toolkit. %s or %s or %s or %s cannot be found'
-          % (os.path.join(mpi_home, 'include'),
-             os.path.exists(os.path.join(mpi_home, 'lib')),
-             os.path.exists(os.path.join(mpi_home, 'lib64')),
-             os.path.exists(os.path.join(mpi_home, 'lib32'))))
+          f"Invalid path to the MPI Toolkit. {os.path.join(mpi_home, 'include')} or {os.path.exists(os.path.join(mpi_home, 'lib'))} or {os.path.exists(os.path.join(mpi_home, 'lib64'))} or {os.path.exists(os.path.join(mpi_home, 'lib32'))} cannot be found"
+      )
     return exists
 
   _ = prompt_loop_or_load_from_env(
@@ -397,11 +380,11 @@ def set_other_mpi_vars(environ_cp):
   # Determine the location of the MPI header files
   include_home = ""
   if os.path.exists(os.path.join(mpi_home, 'include/mpi.h')):
-    symlink_force('%s/include/mpi.h' % mpi_home, 'third_party/mpi/mpi.h')
-    include_home = mpi_home + "/include"
+    symlink_force(f'{mpi_home}/include/mpi.h', 'third_party/mpi/mpi.h')
+    include_home = f"{mpi_home}/include"
   elif os.path.exists(os.path.join(mpi_home, 'include/mpi/mpi.h')):
-    symlink_force('%s/include/mpi/mpi.h' % mpi_home, 'third_party/mpi/mpi.h')
-    include_home = mpi_home + "/include/mpi"
+    symlink_force(f'{mpi_home}/include/mpi/mpi.h', 'third_party/mpi/mpi.h')
+    include_home = f"{mpi_home}/include/mpi"
   else:
     raise ValueError(
         'Cannot find the MPI header file in %s/include or %s/include/mpi' %

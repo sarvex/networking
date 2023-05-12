@@ -161,9 +161,7 @@ def allreduce(tensor, average=True):
   else:
     mpi_size = tf.cast(size(), tensor.dtype)
     summed_tensor = _allreduce(tensor)
-    new_tensor = (tf.div(summed_tensor, mpi_size)
-                  if average else summed_tensor)
-    return new_tensor
+    return tf.div(summed_tensor, mpi_size) if average else summed_tensor
 
 
 class DistributedOptimizer(tf.train.Optimizer):
@@ -185,7 +183,7 @@ class DistributedOptimizer(tf.train.Optimizer):
                  Optimizer.__init__ for more info.
     """
     if name is None:
-      name = "Distributed{}".format(type(optimizer).__name__)
+      name = f"Distributed{type(optimizer).__name__}"
 
     self._optimizer = optimizer
     super(DistributedOptimizer, self).__init__(

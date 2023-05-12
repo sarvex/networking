@@ -46,8 +46,8 @@ def _load_library(name, op_list=None):
         if lib_op.name == expected_op:
           break
       else:
-        raise NameError('Could not find operator %s in dynamic library %s' %
-                        (expected_op, name))
+        raise NameError(
+            f'Could not find operator {expected_op} in dynamic library {name}')
     return library
   except errors.NotFoundError:
     logging.warning('%s file could not be loaded.', name)
@@ -155,7 +155,7 @@ def allgather(tensor, name=None):
       tf.shape(tensor, out_type=tf.int64), [0], [1], name='size_slice')
   if name is None:
     name = 'allgather'
-  sizing_name = '{}_sizing'.format(name)
+  sizing_name = f'{name}_sizing'
   sizes = MPI_LIB.mpi_allgather(my_size, sizes_flag, name=sizing_name)
   return MPI_LIB.mpi_allgather(tensor, sizes, name=name)
 

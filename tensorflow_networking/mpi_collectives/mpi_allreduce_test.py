@@ -41,12 +41,13 @@ class AllreduceTest(test.TestCase):
       for j in range(red_dims[1]):
         suffix = ""
         if out_loc_red[i][j] != my_correct[i][j] or \
-           out_all_red[i][j] != our_correct[i][j]:
+             out_all_red[i][j] != our_correct[i][j]:
           suffix = "WRONG"
           wrong_count += 1
-        print("{}\t{}\t{}\t{}\t{}\t{}"
-              .format(my_rank, i, j, out_loc_red[i][j],
-                      out_all_red[i][j], suffix), flush=True)
+        print(
+            f"{my_rank}\t{i}\t{j}\t{out_loc_red[i][j]}\t{out_all_red[i][j]}\t{suffix}",
+            flush=True,
+        )
         if max_wrong_count > 0 and wrong_count >= max_wrong_count:
           return
 
@@ -68,16 +69,18 @@ class AllreduceTest(test.TestCase):
     weights = []
     for i in range(stages):
       initer = tf.constant_initializer(pow(2.0, i + 1.0))
-      weights.append(tf.get_variable("weights_{}".format(i),
-                                     shape=(hidden_size, out_size),
-                                     dtype=tf.float32,
-                                     initializer=initer))
+      weights.append(
+          tf.get_variable(
+              f"weights_{i}",
+              shape=(hidden_size, out_size),
+              dtype=tf.float32,
+              initializer=initer,
+          ))
 
     # Calculate output through dependent allreduces
     stage_input = inputs
     for i in range(stages):
-      inter_output = tf.add(stage_input, weights[i],
-                            name="add_red_{}".format(i))
+      inter_output = tf.add(stage_input, weights[i], name=f"add_red_{i}")
       stage_input = mpi.allreduce(inter_output,
                                   average=average_allreduce)
 
@@ -86,16 +89,16 @@ class AllreduceTest(test.TestCase):
     # Local reduced output for verification
     local_input = inputs
     for i in range(stages):
-      inter_output = tf.add(local_input, weights[i],
-                            name="addin_loc_{}".format(i))
-      my_reducer = tf.Variable(initial_value=np.ones((hidden_size, out_size)),
-                               dtype=tf.float32, name="loc_redr_{}".format(i))
+      inter_output = tf.add(local_input, weights[i], name=f"addin_loc_{i}")
+      my_reducer = tf.Variable(
+          initial_value=np.ones((hidden_size, out_size)),
+          dtype=tf.float32,
+          name=f"loc_redr_{i}",
+      )
       for r in range(num_ranks):
-        my_reducer = tf.add(my_reducer, inter_output,
-                            name="add_loc_{}_{}".format(i, r))
+        my_reducer = tf.add(my_reducer, inter_output, name=f"add_loc_{i}_{r}")
       if average_allreduce:
-        local_input = tf.div(my_reducer, num_ranks,
-                             name="div_loc_{}".format(i))
+        local_input = tf.div(my_reducer, num_ranks, name=f"div_loc_{i}")
       else:
         local_input = my_reducer
 
@@ -121,28 +124,28 @@ class AllreduceTest(test.TestCase):
         if i == 0:
           sum_ranks = num_ranks * (num_ranks - 1) / 2
           our_output = curr_our_feed * num_ranks + \
-            spread_var * sum_ranks
+              spread_var * sum_ranks
         else:
           our_output = curr_our_feed * num_ranks
 
-      print("rank {}: My output is {}".format(my_rank, my_output))
+      print(f"rank {my_rank}: My output is {my_output}")
       my_correct = np.zeros((batch_size, hidden_size), dtype=np.float32)
       my_correct = my_correct + my_output
-      print("rank {}: Our output is {}".format(my_rank, our_output))
+      print(f"rank {my_rank}: Our output is {our_output}")
       our_correct = np.zeros((batch_size, hidden_size), dtype=np.float32)
       our_correct = our_correct + our_output
 
       for i in range(1000):
         if i % 100 == 0:
-          print("{}: iter {}".format(my_rank, i), flush=True)
+          print(f"{my_rank}: iter {i}", flush=True)
         feed_dict = {inputs: input_feed}
         out_all_red, out_loc_red \
-          = sess.run([all_reduced, local_reduced],
+            = sess.run([all_reduced, local_reduced],
                      feed_dict=feed_dict)
 
         if not np.allclose(out_loc_red, my_correct) or \
-           not np.allclose(out_all_red, our_correct):
-          print("Test incorrect on iter {}".format(i), flush=True)
+             not np.allclose(out_all_red, our_correct):
+          print(f"Test incorrect on iter {i}", flush=True)
           self.dumpFailure(my_rank, out_loc_red, my_correct, out_all_red,
                            our_correct)
           assert(np.allclose(out_loc_red, my_correct) and

@@ -174,10 +174,7 @@ class MPITests(tf.test.TestCase):
 
       # Same number of elements, different rank
       tf.set_random_seed(1234)
-      if rank == 0:
-        dims = [17, 23 * 57]
-      else:
-        dims = [17, 23, 57]
+      dims = [17, 23 * 57] if rank == 0 else [17, 23, 57]
       tensor = tf.random_uniform(dims, -1.0, 1.0)
       with self.assertRaises(tf.errors.FailedPreconditionError):
         session.run(mpi.allreduce(tensor))

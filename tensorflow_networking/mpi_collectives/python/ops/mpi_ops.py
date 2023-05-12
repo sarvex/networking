@@ -126,7 +126,7 @@ def allgather(tensor, name=None):
       tf.shape(tensor, out_type=tf.int64), [0], [1], name='size_slice')
   if name is None:
     name = 'allgather'
-  sizing_name = '{}_sizing'.format(name)
+  sizing_name = f'{name}_sizing'
   sizes = gen_mpi_ops.mpi_allgather(my_size, sizes_flag, name=sizing_name)
   return gen_mpi_ops.mpi_allgather(tensor, sizes, name=name)
 

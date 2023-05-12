@@ -37,10 +37,7 @@ class AllgatherTest(test.TestCase):
     for i in range(len(loc_gat_ind)):
       assert(loc_gat_ind[i] == all_gat_ind[i])
 
-    # For each index, verify same values.
-    local_checked = []
-    for i in range(len(local_gathered.indices)):
-      local_checked.append(False)
+    local_checked = [False for _ in range(len(local_gathered.indices))]
     for i in range(len(all_gathered.indices)):
       all_index = all_gathered.indices[i]
       # TODO(jthestness): Make this lookup quicker using sorting.
@@ -74,7 +71,7 @@ class AllgatherTest(test.TestCase):
       values = []
       my_multiple = rank_id + 1
       current_index = my_multiple
-      for i in range(indices_per_rank):
+      for _ in range(indices_per_rank):
         indices.append(current_index)
         ones_tensor = tf.ones([tensor_width])
         values.append(tf.multiply(ones_tensor,
